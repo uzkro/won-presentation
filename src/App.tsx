@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ArrowRight, Target, Zap, Users, Sword, Flame, 
-  ExternalLink, Copy, Check, Share2, Menu, X 
+  ArrowRight, Target, Users, Sword, Flame, Menu, X 
 } from 'lucide-react'
 import wonHand from './assets/won-hand.png'
 
-const TOKEN_ADDRESS = "EQAmjezmAjiXZ7XfoLGQbNIm4CIEcQwM9CNbpTZJgcN9LeVi"
+const TOKEN_ADDRESS = "EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
 
 const TOPBLAST_LINK = `https://topblast.lol/?token=${TOKEN_ADDRESS}`
-const TONVIEWER_LINK = `https://tonviewer.com/address/${TOKEN_ADDRESS}`
-const DEXSCREENER_LINK = `https://dexscreener.com/ton/${TOKEN_ADDRESS}`
 const X_LINK = "https://x.com/waronnations"
 const TELEGRAM_LINK = "https://t.me/waronnations"
 
@@ -23,8 +20,6 @@ interface OnChainData {
 function App() {
   const [activated, setActivated] = useState(false)
   const [showWarCry, setShowWarCry] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [shareCopied, setShareCopied] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   const [onChainData, setOnChainData] = useState<OnChainData>({
@@ -78,16 +73,8 @@ function App() {
   }
 
   const handleBuy = () => window.open(TOPBLAST_LINK, '_blank')
-  const handleVerify = () => window.open(TONVIEWER_LINK, '_blank')
-  const handleDexscreener = () => window.open(DEXSCREENER_LINK, '_blank')
   const handleX = () => window.open(X_LINK, '_blank')
   const handleTelegram = () => window.open(TELEGRAM_LINK, '_blank')
-
-  const copyAddress = async () => {
-    await navigator.clipboard.writeText(TOKEN_ADDRESS)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const handleHandClick = () => {
     setActivated(true)
@@ -184,7 +171,7 @@ function App() {
         </div>
       </section>
 
-      {/* THE SYMBOL - With original cool effects restored + animation */}
+      {/* THE SYMBOL */}
       <section id="symbol" className="max-w-5xl mx-auto px-6 pt-20 pb-24 border-t border-white/10">
         <div className="text-center mb-12">
           <div className="inline-block px-5 py-1.5 text-xs tracking-[4px] bg-white/5 border border-white/10 rounded-full mb-4">THE FLAG OF THE REVOLUTION</div>
@@ -206,7 +193,6 @@ function App() {
               transition={{ type: "spring", stiffness: 180, damping: 14 }}
             />
             
-            {/* Red glow overlay when activated */}
             <AnimatePresence>
               {activated && (
                 <motion.div 
@@ -307,7 +293,7 @@ function App() {
         </div>
       </section>
 
-      {/* THE WAR - With staggered animation */}
+      {/* THE WAR */}
       <section id="war" className="max-w-6xl mx-auto px-6 py-20 border-t border-white/10">
         <div className="text-center mb-16">
           <div className="text-red-500 tracking-[4px] text-sm font-medium mb-3">WHY WE FIGHT</div>
