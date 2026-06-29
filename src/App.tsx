@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import wonHand from './assets/won-hand.png'
 
-const TOKEN_ADDRESS = "EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
+const TOKEN_ADDRESS = "EQAmjezmAjiXZ7XfoLGQbNIm4CIEcQwM9CNbpTZJgcN9LeVi"
 
 const TOPBLAST_LINK = `https://topblast.lol/?token=${TOKEN_ADDRESS}`
 const X_LINK = "https://x.com/waronnations"
