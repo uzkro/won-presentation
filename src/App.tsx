@@ -1,23 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Target, Zap, Users, Sword, Flame, ExternalLink, Copy, Check, Share2 } from 'lucide-react'
+import { 
+  ArrowRight, Target, Zap, Users, Sword, Flame, 
+  ExternalLink, Copy, Check, Share2, Menu, X 
+} from 'lucide-react'
 import wonHand from './assets/won-hand.png'
 
-const TOPBLAST_LINK = "https://topblast.lol/?token=EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
-const TONVIEWER_LINK = "https://tonviewer.com/address/EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
-const DEXSCREENER_LINK = "https://dexscreener.com/ton/EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
-const TOKEN_ADDRESS = "EQA6V2rlkDtIWooWLdaCOQ3iwylsMRkoYYtzZ01Jq9uSH8Or"
+const TOKEN_ADDRESS = "EQAmjezmAjiXZ7XfoLGQbNIm4CIEcQwM9CNbpTZJgcN9LeVi"
 
-const onChainData = {
-  holders: 15,
-  days: 1,
-  bonding: 13,
-  raised: 200,
-  supply: 1000000000,
-}
+const TOPBLAST_LINK = `https://topblast.lol/?token=${TOKEN_ADDRESS}`
+const TONVIEWER_LINK = `https://tonviewer.com/address/${TOKEN_ADDRESS}`
+const DEXSCREENER_LINK = `https://dexscreener.com/ton/${TOKEN_ADDRESS}`
+const X_LINK = "https://x.com/waronnations"
+const TELEGRAM_LINK = "https://t.me/waronnations"
 
-const AnimatedCounter = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
-  return <span className="tabular-nums">{value}{suffix}</span>
+interface OnChainData {
+  holders: number
+  supply: number
+  transactions: number
 }
 
 function App() {
@@ -25,31 +25,68 @@ function App() {
   const [showWarCry, setShowWarCry] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  const [onChainData, setOnChainData] = useState<OnChainData>({
+    holders: 0,
+    supply: 1,
+    transactions: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  const fetchRealData = async () => {
+    try {
+      setIsLoading(true)
+      const jettonRes = await fetch(`https://tonapi.io/v2/jettons/${TOKEN_ADDRESS}`)
+      const jetton = await jettonRes.json()
+      const holdersRes = await fetch(`https://tonapi.io/v2/jettons/${TOKEN_ADDRESS}/holders?limit=50`)
+      const holdersData = await holdersRes.json()
+      const txRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${TOKEN_ADDRESS}/transactions?limit=200`)
+      const txData = await txRes.json()
+
+      const rawSupply = parseFloat(jetton.total_supply || "0")
+      const supplyInBillions = Math.floor(rawSupply / 1_000_000_000)
+
+      setOnChainData({
+        holders: holdersData.total || 0,
+        supply: supplyInBillions,
+        transactions: txData.transactions?.length || 0,
+      })
+    } catch (error) {
+      console.error("Failed to fetch on-chain data")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchRealData()
+    const interval = setInterval(fetchRealData, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const element = document.getElementById(id)
+    if (element) {
+      const offset = 80
+      const bodyRect = document.body.getBoundingClientRect().top
+      const elementPosition = element.getBoundingClientRect().top
+      const offsetPosition = elementPosition - bodyRect - offset
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+    }
+    setMobileMenuOpen(false)
   }
 
   const handleBuy = () => window.open(TOPBLAST_LINK, '_blank')
   const handleVerify = () => window.open(TONVIEWER_LINK, '_blank')
   const handleDexscreener = () => window.open(DEXSCREENER_LINK, '_blank')
+  const handleX = () => window.open(X_LINK, '_blank')
+  const handleTelegram = () => window.open(TELEGRAM_LINK, '_blank')
 
   const copyAddress = async () => {
     await navigator.clipboard.writeText(TOKEN_ADDRESS)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const copyPageLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
-    setShareCopied(true)
-    setTimeout(() => setShareCopied(false), 2000)
-  }
-
-  const shareOnX = () => {
-    const text = encodeURIComponent("$WON War On Nations is live. The middle finger to the old world.")
-    const url = encodeURIComponent("https://waronnations.fun")
-    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank')
   }
 
   const handleHandClick = () => {
@@ -61,136 +98,93 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden font-sans selection:bg-red-600 selection:text-white">
+      
       {/* NAV */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-2xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center">
-              <span className="text-[#050505] font-black text-3xl tracking-[-3.5px]">W</span>
-            </div>
+            <img src={wonHand} alt="Wardog" className="w-11 h-11 rounded-2xl object-contain" />
             <div>
-              <div className="font-black text-4xl tracking-[-4px] leading-none">$WON</div>
+              <div className="font-black text-4xl tracking-[-4px] leading-none">$WARDOG</div>
               <div className="text-[10px] text-white/40 -mt-1 tracking-[4px]">WAR ON NATIONS</div>
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-10 text-sm uppercase tracking-[3px] font-medium">
             <button onClick={() => scrollTo('symbol')} className="hover:text-red-500 transition-colors">THE SYMBOL</button>
-            <button onClick={() => scrollTo('live')} className="hover:text-red-500 transition-colors">ON-CHAIN DATA</button>
+            <button onClick={() => scrollTo('live')} className="hover:text-red-500 transition-colors">ON-CHAIN</button>
+            <button onClick={() => scrollTo('manifesto')} className="hover:text-red-500 transition-colors">MANIFESTO</button>
             <button onClick={() => scrollTo('war')} className="hover:text-red-500 transition-colors">THE WAR</button>
-            <button onClick={() => scrollTo('mission')} className="hover:text-red-500 transition-colors">MISSION</button>
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={handleVerify} className="hidden md:flex items-center gap-2 px-5 py-2 text-sm border border-white/20 hover:bg-white/5 rounded-2xl transition-all">
-              VERIFY ON TON <ExternalLink size={16} />
+            <button onClick={handleBuy} className="hidden md:flex items-center gap-2.5 px-8 py-2.5 bg-white text-[#050505] font-bold rounded-2xl hover:bg-red-600 hover:text-white transition-all text-sm tracking-wider">
+              BUY $WARDOG
             </button>
-            <button onClick={handleBuy} className="flex items-center gap-2.5 px-8 py-2.5 bg-white text-[#050505] font-bold rounded-2xl hover:bg-red-600 hover:text-white active:scale-[0.985] transition-all text-sm tracking-wider">
-              BUY $WON <ArrowRight size={18} />
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
+
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden border-t border-white/10 bg-[#050505]">
+              <div className="flex flex-col px-6 py-6 gap-6 text-lg">
+                <button onClick={() => scrollTo('symbol')}>THE SYMBOL</button>
+                <button onClick={() => scrollTo('live')}>ON-CHAIN</button>
+                <button onClick={() => scrollTo('manifesto')}>MANIFESTO</button>
+                <button onClick={() => scrollTo('war')}>THE WAR</button>
+                <button onClick={handleBuy} className="mt-4 w-full py-4 bg-white text-[#050505] font-bold rounded-2xl">BUY $WARDOG</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* HERO */}
       <section className="min-h-[100dvh] flex items-center justify-center pt-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] bg-[length:4px_4px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/95 via-black/70 to-black" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-red-600/10 blur-[140px] rounded-full" />
 
-        <div className="max-w-6xl mx-auto px-6 text-center z-10 relative pb-16 lg:pb-20">
-          {/* Advanced $WON SVG with letter-inside-letter effect */}
-          <div className="mb-3 flex justify-center">
-            <svg 
-              viewBox="0 0 720 135" 
-              className="w-full max-w-[680px] md:max-w-[720px] h-auto"
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <text 
-                x="50%" y="92" textAnchor="middle" 
-                fontSize="128" fontWeight="900" 
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                fill="#ffffff" stroke="#111111" strokeWidth="24"
-                strokeLinejoin="round" strokeLinecap="round"
-              >
-                $WON
-              </text>
-              
-              <text 
-                x="50%" y="92" textAnchor="middle" 
-                fontSize="128" fontWeight="900" 
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                fill="#ffffff"
-              >
-                $WON
-              </text>
-
-              <text 
-                x="50%" y="92" textAnchor="middle" 
-                fontSize="128" fontWeight="900" 
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                fill="none" stroke="#0a0a0a" strokeWidth="9"
-                strokeLinejoin="round" strokeLinecap="round"
-              >
-                $WON
-              </text>
-
-              <text 
-                x="50%" y="92" textAnchor="middle" 
-                fontSize="128" fontWeight="900" 
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                fill="none" stroke="#ffffff" strokeWidth="2.5" opacity="0.9"
-                strokeLinejoin="round" strokeLinecap="round"
-              >
-                $WON
-              </text>
+        <div className="max-w-6xl mx-auto px-6 text-center z-10 relative">
+          <div className="mb-1 flex justify-center">
+            <svg viewBox="0 0 820 145" className="w-full max-w-[740px] h-auto">
+              <text x="50%" y="98" textAnchor="middle" fontSize="135" fontWeight="900" fill="#111111" stroke="#111111" strokeWidth="30">$WARDOG</text>
+              <text x="50%" y="98" textAnchor="middle" fontSize="135" fontWeight="900" fill="#ffffff">$WARDOG</text>
+              <text x="50%" y="98" textAnchor="middle" fontSize="135" fontWeight="900" fill="none" stroke="#ef4444" strokeWidth="4" opacity="0.5">$WARDOG</text>
+              <text x="50%" y="98" textAnchor="middle" fontSize="135" fontWeight="900" fill="none" stroke="#ffffff" strokeWidth="1.5" opacity="0.35">$WARDOG</text>
             </svg>
           </div>
 
-          <div className="text-[50px] md:text-[70px] font-black tracking-[-3.5px] text-white/90 mb-4">
-            WAR ON NATIONS
-          </div>
+          <h1 className="text-[60px] md:text-[84px] font-black tracking-[-5.5px] leading-none mb-2">WAR ON NATIONS</h1>
+          <div className="h-[5px] w-28 mx-auto bg-gradient-to-r from-red-600 to-red-500 rounded-full mb-8" />
 
-          <div className="max-w-[620px] mx-auto mb-8">
-            <p className="text-3xl md:text-[34px] font-medium tracking-[-1px] text-white/90 leading-tight">
-              One symbol.<br />
-              One nation.<br />
-              <span className="text-red-500">Zero fucks given.</span>
-            </p>
-          </div>
+          <p className="max-w-lg mx-auto text-2xl md:text-[32px] font-medium tracking-[-1.2px] text-white/90 mb-10 leading-tight">
+            One symbol.<br />One nation.<br />
+            <span className="text-red-500">Zero tolerance.</span>
+          </p>
 
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-3 px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm tracking-[1.5px]">
-              <div className="w-2 h-2 bg-red-500 rounded-full" />
-              <span>{onChainData.holders} WARRIORS JOINED</span>
+          <div className="flex justify-center mb-10">
+            <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-sm tracking-[1.5px]">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span>{onChainData.holders} WARDOGS JOINED</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => scrollTo('symbol')}
-              className="group flex items-center justify-center gap-3 px-10 py-5 border-2 border-white/30 hover:bg-white hover:text-[#050505] transition-all rounded-3xl text-lg font-semibold tracking-[0.5px] active:scale-[0.985]"
-            >
+            <button onClick={() => scrollTo('symbol')} className="px-10 py-5 border-2 border-white/30 hover:bg-white hover:text-[#050505] rounded-3xl text-lg font-semibold tracking-wider transition-all active:scale-[0.985]">
               DISCOVER THE SYMBOL
-              <ArrowRight className="group-hover:translate-x-1 transition" />
             </button>
-
-            <button
-              onClick={handleBuy}
-              className="flex items-center justify-center gap-3 px-10 py-5 bg-white text-[#050505] font-bold rounded-3xl hover:bg-red-600 hover:text-white active:bg-red-700 transition-all text-lg tracking-wider active:scale-[0.985]"
-            >
-              BUY $WON NOW <ArrowRight />
+            <button onClick={handleBuy} className="px-10 py-5 bg-white text-[#050505] font-bold rounded-3xl hover:bg-red-600 hover:text-white text-lg tracking-wider active:scale-[0.985] transition-all flex items-center justify-center gap-2">
+              BUY $WARDOG NOW <ArrowRight />
             </button>
           </div>
         </div>
-
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-xs tracking-[4px] text-white/40">
-          SCROLL TO BEGIN THE WAR
-          <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent mt-3" />
-        </div>
       </section>
 
-      {/* THE SYMBOL */}
+      {/* THE SYMBOL - With original cool effects restored + animation */}
       <section id="symbol" className="max-w-5xl mx-auto px-6 pt-20 pb-24 border-t border-white/10">
         <div className="text-center mb-12">
           <div className="inline-block px-5 py-1.5 text-xs tracking-[4px] bg-white/5 border border-white/10 rounded-full mb-4">THE FLAG OF THE REVOLUTION</div>
@@ -201,146 +195,119 @@ function App() {
           <div className="relative mb-10 cursor-pointer" onClick={handleHandClick}>
             <motion.img
               src={wonHand}
-              alt="Click to activate"
-              className="w-[280px] md:w-[380px] lg:w-[420px] select-none"
-              style={{ filter: activated ? 'drop-shadow(0 0 100px rgba(239,68,68,0.7))' : 'drop-shadow(0 0 90px rgba(255,255,255,0.5))' }}
-              animate={{ scale: activated ? 1.18 : 1 }}
-              transition={{ type: "spring", stiffness: 180, damping: 18 }}
+              alt="Wardog Symbol"
+              className="w-[280px] md:w-[400px] select-none"
+              style={{
+                filter: activated 
+                  ? 'drop-shadow(0 0 120px rgba(239,68,68,0.8))' 
+                  : 'drop-shadow(0 0 90px rgba(255,255,255,0.6))'
+              }}
+              animate={{ scale: activated ? 1.22 : 1 }}
+              transition={{ type: "spring", stiffness: 180, damping: 14 }}
             />
+            
+            {/* Red glow overlay when activated */}
             <AnimatePresence>
-              {activated && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-600/20 blur-3xl rounded-full scale-[1.6]" />}
+              {activated && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }} 
+                  animate={{ opacity: 1, scale: 1.6 }} 
+                  exit={{ opacity: 0 }} 
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0 bg-red-600/25 blur-3xl rounded-full pointer-events-none" 
+                />
+              )}
             </AnimatePresence>
           </div>
 
-          <div className="max-w-2xl text-center">
-            <p className="text-2xl md:text-3xl font-medium tracking-[-0.5px] text-white/90 mb-6">This is not just an emoji.<br />This is our flag.</p>
-            <p className="text-xl text-white/70 max-w-lg mx-auto">Click it. Feel it. Then join the war.</p>
+          <div className="max-w-xl text-center">
+            <p className="text-2xl md:text-3xl font-medium tracking-[-0.5px] mb-6">This is not just an emoji.<br />This is the mark of those who stayed.</p>
+            <p className="text-xl text-white/70">Click it. Feel it. Then decide if you’re built for this.</p>
           </div>
 
-          <button onClick={handleBuy} className="mt-10 flex items-center gap-3 px-9 py-4 bg-white text-[#050505] font-bold text-lg rounded-3xl hover:bg-red-600 hover:text-white active:scale-[0.985] transition-all">
-            ACTIVATE YOUR STATUS — BUY $WON <ArrowRight />
+          <button onClick={handleBuy} className="mt-12 px-10 py-4 bg-white text-[#050505] font-bold text-lg rounded-3xl hover:bg-red-600 hover:text-white active:scale-[0.985] transition-all">
+            JOIN THE WAR — BUY $WARDOG
           </button>
         </div>
-
-        <AnimatePresence>
-          {showWarCry && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-              <div className="text-[72px] md:text-[92px] font-black tracking-[-6px] text-red-600 drop-shadow-[0_0_60px_rgb(185,28,28)]">FUCK THE SYSTEM</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </section>
 
       {/* ON-CHAIN DATA */}
       <section id="live" className="bg-[#0a0a0a] py-20 border-t border-white/10">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-white/80 text-xs tracking-[3px] font-medium">
-                  VERIFIED ON-CHAIN
-                </div>
-                <span className="text-white/40 text-sm">As of June 14, 2026</span>
-              </div>
-              <h2 className="text-7xl font-black tracking-[-3.5px]">Real Data. Real War.</h2>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={handleVerify} className="flex items-center gap-2 px-6 py-3 border border-white/20 hover:bg-white/5 rounded-2xl text-sm transition-all self-start md:self-auto">
-                VERIFY ON TON <ExternalLink size={18} />
-              </button>
-              <button onClick={handleDexscreener} className="flex items-center gap-2 px-6 py-3 border border-white/20 hover:bg-white/5 hover:border-[#22c55e]/50 rounded-2xl text-sm transition-all self-start md:self-auto">
-                VIEW CHART <ExternalLink size={18} />
-              </button>
-            </div>
+          <div className="text-center mb-12">
+            <div className="text-red-500 tracking-[4px] text-sm font-medium mb-3">LIVE FROM TON BLOCKCHAIN</div>
+            <h2 className="text-6xl font-black tracking-[-3px]">Real Data. Real War.</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: "WARRIORS ACTIVATED", value: onChainData.holders, suffix: "", sub: "On-chain holders" },
-              { label: "DAYS OF RESISTANCE", value: onChainData.days, suffix: "", sub: "Since launch" },
-              { label: "BONDING CURVE", value: onChainData.bonding, suffix: "%", sub: "Mission progress" },
-              { label: "RAISED", value: onChainData.raised, suffix: " TON", sub: "On Topblast" },
-              { label: "TOTAL SUPPLY", value: onChainData.supply / 1000000000, suffix: "B", sub: "Fixed & fair" },
+              { label: "WARDOGS ACTIVATED", value: onChainData.holders, sub: "Unique holders on-chain" },
+              { label: "TOTAL SUPPLY", value: "1B", sub: "Fixed. Fair. Forever." },
+              { label: "ON-CHAIN ACTIVITY", value: onChainData.transactions, sub: "Total transactions" },
             ].map((stat, index) => (
-              <div key={index} className="bg-[#050505] border border-white/10 rounded-3xl p-8 group hover:border-red-500/40 transition-all">
-                <div className="text-red-500 text-xs tracking-[3px] mb-3">{stat.label}</div>
-                <div className="font-black text-6xl md:text-7xl tracking-[-3px] mb-2">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                </div>
+              <motion.div 
+                key={index} 
+                whileHover={{ y: -6 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 30 }}
+                transition={{ delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="bg-[#050505] border border-white/10 rounded-3xl p-8 hover:border-red-500/30 transition-all"
+              >
+                <div className="text-red-500 text-xs tracking-[3px] mb-4">{stat.label}</div>
+                <div className="font-black text-6xl md:text-7xl tracking-[-3px] mb-2">{isLoading ? "..." : stat.value}</div>
                 <div className="text-white/60 text-sm">{stat.sub}</div>
-              </div>
+              </motion.div>
             ))}
           </div>
-
-          <div className="mt-8">
-            <button 
-              onClick={handleDexscreener}
-              className="group w-full flex flex-col sm:flex-row items-center justify-center gap-4 px-10 py-5 bg-[#0a0a0a] border border-white/10 hover:border-[#22c55e] rounded-3xl transition-all active:scale-[0.985]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[#111] group-hover:bg-[#22c55e]/10 transition-colors flex-shrink-0">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 3v18h18" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M7 16L11 11L15 14L21 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="21" cy="7" r="1.5" fill="#22c55e"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-xl tracking-[-0.5px]">VIEW LIVE CHART ON DEXSCREENER</div>
-                  <div className="text-sm text-white/60">Real-time trades • Price action • Full analytics</div>
-                </div>
-              </div>
-              <div className="hidden sm:block ml-auto">
-                <ExternalLink size={22} className="text-white/60 group-hover:text-[#22c55e] group-hover:translate-x-0.5 transition-all" />
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-10">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <div className="flex items-center gap-3">
-                <div className="text-sm font-medium tracking-wider">BONDING CURVE PROGRESS</div>
-                <div className="text-red-500 font-mono text-sm">{onChainData.bonding}%</div>
-              </div>
-              <div className="text-xs text-white/50">Target: Migration to DEX</div>
-            </div>
-
-            <div onClick={handleBuy} className="relative h-4 bg-white/10 rounded-full overflow-hidden cursor-pointer group">
-              <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-red-600 to-red-500 rounded-full shadow-[0_0_20px_rgb(185,28,28)]" style={{ width: `${onChainData.bonding}%` }} />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-[10px] font-mono tracking-[2px] text-white/70 group-hover:text-white transition-colors">CLICK TO BUY → TOPBLAST</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#050505] border border-white/10 rounded-3xl px-6 py-5">
-            <div className="font-mono text-sm text-white/70 break-all">{TOKEN_ADDRESS}</div>
-            <button onClick={copyAddress} className="flex items-center gap-2 px-5 py-2.5 text-sm border border-white/20 hover:bg-white/5 rounded-2xl transition-all active:scale-[0.985]">
-              {copied ? <>COPIED! <Check size={16} /></> : <>COPY ADDRESS <Copy size={16} /></>}
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* SPREAD THE WAR */}
-      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-white/10 text-center">
-        <div className="mb-8">
-          <div className="text-red-500 tracking-[4px] text-sm font-medium mb-2">SPREAD THE WAR</div>
-          <h3 className="text-5xl font-black tracking-[-2px]">Help us grow the nation</h3>
+      {/* MANIFESTO */}
+      <section id="manifesto" className="max-w-4xl mx-auto px-6 py-24 border-t border-white/10 text-center">
+        <div className="text-red-500 tracking-[4px] text-sm font-medium mb-4">THE WARDOG CODE</div>
+        <h2 className="text-6xl md:text-7xl font-black tracking-[-3.5px] mb-12">Manifesto</h2>
+        <div className="max-w-2xl mx-auto space-y-8 text-2xl md:text-3xl font-medium tracking-[-0.5px] text-white/90">
+          <p>We don’t ask for permission.</p>
+          <p>We don’t wait for rescue.</p>
+          <p>We stayed when others ran.</p>
+          <p className="text-red-500">This is our war.<br />This is our nation.</p>
+        </div>
+      </section>
+
+      {/* JOIN THE PACK */}
+      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-white/10">
+        <div className="text-center mb-12">
+          <div className="text-red-500 tracking-[4px] text-sm font-medium mb-3">BUILD THE PACK</div>
+          <h2 className="text-6xl font-black tracking-[-3px]">Join The Movement</h2>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button onClick={copyPageLink} className="flex items-center justify-center gap-3 px-8 py-4 border border-white/20 hover:bg-white/5 rounded-3xl text-lg font-semibold transition-all active:scale-[0.985]">
-            {shareCopied ? <><Check size={20} /> LINK COPIED</> : <><Copy size={20} /> COPY PAGE LINK</>}
+        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <button onClick={handleX} className="group flex items-center justify-between px-8 py-7 bg-[#0a0a0a] border border-white/10 hover:border-white hover:bg-white/5 rounded-3xl transition-all active:scale-[0.985]">
+            <div className="flex items-center gap-4">
+              <div className="text-3xl font-black">𝕏</div>
+              <div className="text-left">
+                <div className="font-bold text-2xl tracking-[-0.5px]">Follow on X</div>
+                <div className="text-white/60">@waronnations</div>
+              </div>
+            </div>
+            <ArrowRight className="group-hover:translate-x-1 transition text-white/60" />
           </button>
-          <button onClick={shareOnX} className="flex items-center justify-center gap-3 px-8 py-4 bg-white text-[#050505] hover:bg-red-600 hover:text-white rounded-3xl text-lg font-bold transition-all active:scale-[0.985]">
-            <Share2 size={20} /> SHARE ON X
+
+          <button onClick={handleTelegram} className="group flex items-center justify-between px-8 py-7 bg-[#0a0a0a] border border-white/10 hover:border-white hover:bg-white/5 rounded-3xl transition-all active:scale-[0.985]">
+            <div className="flex items-center gap-4">
+              <div className="text-3xl">📱</div>
+              <div className="text-left">
+                <div className="font-bold text-2xl tracking-[-0.5px]">Join on Telegram</div>
+                <div className="text-white/60">t.me/waronnations</div>
+              </div>
+            </div>
+            <ArrowRight className="group-hover:translate-x-1 transition text-white/60" />
           </button>
         </div>
       </section>
 
-      {/* THE WAR */}
+      {/* THE WAR - With staggered animation */}
       <section id="war" className="max-w-6xl mx-auto px-6 py-20 border-t border-white/10">
         <div className="text-center mb-16">
           <div className="text-red-500 tracking-[4px] text-sm font-medium mb-3">WHY WE FIGHT</div>
@@ -350,40 +317,24 @@ function App() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { icon: Sword, title: "Centralized Chains", desc: "We reject chains disguised as freedom." },
-            { icon: Target, title: "Fake Narratives", desc: "Media and institutions that divide nations for profit." },
-            { icon: Flame, title: "Weak Leadership", desc: "Leaders who serve themselves, not the people." },
-            { icon: Users, title: "Division Tactics", desc: "They want us fighting each other. We fight together." },
+            { icon: Target, title: "Fake Narratives", desc: "They divide nations for profit." },
+            { icon: Flame, title: "Weak Leadership", desc: "They serve themselves, not the people." },
+            { icon: Users, title: "Division Tactics", desc: "They want us fighting each other." },
           ].map((item, index) => (
-            <div key={index} className="group bg-[#050505] border border-white/10 p-8 rounded-3xl hover:border-red-500/40 transition-all">
+            <motion.div 
+              key={index} 
+              whileHover={{ y: -6 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 40 }}
+              transition={{ delay: index * 0.08 }}
+              viewport={{ once: true }}
+              className="group bg-[#050505] border border-white/10 p-8 rounded-3xl hover:border-red-500/40 transition-all"
+            >
               <item.icon className="w-9 h-9 text-red-500 mb-8 group-hover:scale-110 transition" />
               <h3 className="font-bold text-3xl tracking-[-1px] mb-4">{item.title}</h3>
               <p className="text-white/70 text-[17px] leading-snug">{item.desc}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      </section>
-
-      {/* MISSION */}
-      <section id="mission" className="bg-[#0a0a0a] py-20 border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="text-red-500 tracking-[4px] text-sm font-medium mb-3">OUR PURPOSE</div>
-            <h2 className="text-7xl font-black tracking-[-3px]">The Mission</h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: Target, title: "Expose & Destroy", desc: "Shatter every lie built to keep nations weak and obedient." },
-              { icon: Zap, title: "Unite the Warriors", desc: "Build the most powerful decentralized army in history." },
-              { icon: Flame, title: "Build the New Nation", desc: "Create real value, real power, and real freedom with $WON." },
-            ].map((item, index) => (
-              <div key={index} className="bg-[#050505] border border-white/10 p-9 rounded-3xl group hover:border-red-500/50 transition-colors">
-                <item.icon className="w-10 h-10 mb-8 text-red-500 group-hover:rotate-12 transition" />
-                <h3 className="font-bold text-[34px] tracking-[-1.5px] mb-5 leading-none">{item.title}</h3>
-                <p className="text-white/75 text-[17px] leading-snug">{item.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -391,22 +342,32 @@ function App() {
       <section className="max-w-4xl mx-auto px-6 py-24 text-center border-t border-white/10">
         <div className="max-w-2xl mx-auto">
           <div className="text-red-500 tracking-[4px] text-sm font-medium mb-4">THE WAR IS HERE</div>
-          <h2 className="text-7xl md:text-[76px] font-black tracking-[-4px] leading-none mb-8">Ready to flip<br />the entire system?</h2>
-          <p className="text-2xl text-white/70 mb-12">One click. One token. One nation.</p>
+          <h2 className="text-7xl md:text-[76px] font-black tracking-[-4px] leading-none mb-8">Ready to become<br />a Wardog?</h2>
+          <p className="text-2xl text-white/70 mb-4">One click. One token. One nation.</p>
+          <p className="text-lg text-white/60 mb-12">Respect for those who stayed.</p>
 
           <button onClick={handleBuy} className="group inline-flex items-center justify-center gap-4 px-16 py-6 text-2xl font-black bg-white text-[#050505] rounded-3xl hover:bg-red-600 hover:text-white active:scale-[0.985] transition-all shadow-2xl">
-            BUY $WON ON TOPBLAST.LOL
+            BUY $WARDOG ON TOPBLAST
             <ArrowRight className="group-hover:translate-x-1 transition" size={28} />
           </button>
-
-          <div className="mt-6 text-xs tracking-widest text-white/40">DIRECT LINK • REAL BONDING CURVE • NO BULLSHIT</div>
         </div>
       </section>
 
       <footer className="border-t border-white/10 py-9 text-center text-xs text-white/40 tracking-wider">
-        © {new Date().getFullYear()} $WON — WAR ON NATIONS<br />
-        waronnations.fun • REAL ON-CHAIN DATA • REAL MOVEMENT
+        © {new Date().getFullYear()} $WARDOG — WAR ON NATIONS<br />
+        REAL ON-CHAIN • REAL PACK • REAL MOVEMENT
       </footer>
+
+      {/* War Cry Overlay */}
+      <AnimatePresence>
+        {showWarCry && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none bg-black/70">
+            <div className="text-[72px] md:text-[92px] font-black tracking-[-6px] text-red-600 drop-shadow-[0_0_100px_rgb(185,28,28)]">
+              RESPECT THE PACK
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
