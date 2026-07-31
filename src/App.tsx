@@ -14,11 +14,19 @@ const TOPBLAST_WARDOG = `https://topblast.lol/?token=${WARDOG_CA}`
 const GAME_LINK = "https://t.me/waronnationsgamebot?startapp=WAR-Q73AC2"
 const X_LINK = "https://x.com/waronnations"
 const TG_LINK = "https://t.me/waronnations"
+const TONVIEWER_ACCOUNT = `https://tonviewer.com/${WARDOG_CA}`
+
+interface RecentTx {
+  time: string
+  hash: string
+  link: string
+}
 
 interface OnChainData {
   holders: number
-  supply: number
-  transactions: number
+  supply: string
+  latestTx: string
+  recent: RecentTx[]
 }
 
 const ranks = [
@@ -46,38 +54,78 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [copiedDog, setCopiedDog] = useState(false)
   const [copiedCat, setCopiedCat] = useState(false)
-  const [onChainData, setOnChainData] = useState<OnChainData>({ holders: 0, supply: 1, transactions: 0 })
+  const [onChainData, setOnChainData] = useState<OnChainData>({
+    holders: 0,
+    supply: '1B',
+    latestTx: '—',
+    recent: [],
+  })
   const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
   const [activated, setActivated] = useState(false)
 
   const fetchRealData = async () => {
     try {
       setIsLoading(true)
-      const jettonRes = await fetch(`https://tonapi.io/v2/jettons/${WARDOG_CA}`)
-      const jetton = await jettonRes.json()
-      const holdersRes = await fetch(`https://tonapi.io/v2/jettons/${WARDOG_CA}/holders?limit=1`)
-      const holdersData = await holdersRes.json()
-      const txRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${WARDOG_CA}/transactions?limit=100`)
-      const txData = await txRes.json()
+      setHasError(false)
 
-      const rawSupply = parseFloat(jetton.total_supply || "0")
-      const supplyInBillions = Math.floor(rawSupply / 1_000_000_000)
+      // Jetton info
+      const jettonRes = await fetch(`https://tonapi.io/v2/jettons/${WARDOG_CA}`)
+      if (!jettonRes.ok) throw new Error(`Jetton API ${jettonRes.status}`)
+      const jetton = await jettonRes.json()
+
+      // Recent events
+      const eventsRes = await fetch(
+        `https://tonapi.io/v2/accounts/${WARDOG_CA}/events?limit=10`
+      )
+      if (!eventsRes.ok) throw new Error(`Events API ${eventsRes.status}`)
+      const eventsData = await eventsRes.json()
+      const events = eventsData.events || []
+
+      const now = Math.floor(Date.now() / 1000)
+
+      const formatTime = (ts: number) => {
+        const diff = now - ts
+        if (diff < 60) return 'just now'
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+        return `${Math.floor(diff / 86400)}d ago`
+      }
+
+      const recent: RecentTx[] = events.slice(0, 5).map((e: any) => {
+        const txHash =
+          e.actions?.[0]?.base_transactions?.[0] ||
+          e.event_id ||
+          ''
+
+        return {
+          time: formatTime(e.timestamp),
+          hash: txHash ? `${txHash.slice(0, 8)}…${txHash.slice(-6)}` : '••••••••',
+          link: txHash
+            ? `https://tonviewer.com/transaction/${txHash}`
+            : TONVIEWER_ACCOUNT,
+        }
+      })
 
       setOnChainData({
-        holders: holdersData.total || 0,
-        supply: supplyInBillions || 1,
-        transactions: txData.transactions?.length || 0,
+        holders: jetton.holders_count || 0,
+        supply: '1B',
+        latestTx: recent[0]?.time || '—',
+        recent,
       })
     } catch (e) {
-      console.error(e)
+      console.error('On-chain fetch error:', e)
+      setHasError(true)
+      // Keep previous data — do not overwrite with zeros
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Automatic polling every 45 seconds
   useEffect(() => {
     fetchRealData()
-    const id = setInterval(fetchRealData, 60000)
+    const id = setInterval(fetchRealData, 45000)
     return () => clearInterval(id)
   }, [])
 
@@ -316,28 +364,80 @@ export default function App() {
           </div>
 
           {/* Live data */}
-          <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.03]">
+          <div className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-white/[0.03]">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black">LIVE $WARDOG ON-CHAIN</h3>
+              <h3 className="text-lg sm:text-xl font-black">LIVE $WARDOG ON-CHAIN</h3>
               <div className="flex items-center gap-2 text-xs text-white/40">
-                <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-500' : 'bg-green-500'} animate-pulse`} />
-                {isLoading ? 'Syncing…' : 'Live'}
+                <span className={`w-2 h-2 rounded-full ${
+                  hasError ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-green-500'
+                } animate-pulse`} />
+                {hasError ? 'Retrying…' : isLoading ? 'Syncing…' : 'Live • 45s'}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-6">
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 mb-8">
               <div>
-                <div className="text-3xl sm:text-4xl font-black tabular-nums">{onChainData.holders}</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wider">Holders</div>
+                <div className="text-2xl sm:text-4xl font-black tabular-nums">
+                  {isLoading && onChainData.holders === 0 ? '…' : onChainData.holders}
+                </div>
+                <div className="text-[10px] sm:text-xs text-white/40 mt-1 uppercase tracking-wider">
+                  Holders
+                </div>
               </div>
               <div>
-                <div className="text-3xl sm:text-4xl font-black tabular-nums">{onChainData.supply}B</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wider">Supply</div>
+                <div className="text-2xl sm:text-4xl font-black tabular-nums">
+                  {onChainData.supply}
+                </div>
+                <div className="text-[10px] sm:text-xs text-white/40 mt-1 uppercase tracking-wider">
+                  Supply
+                </div>
               </div>
               <div>
-                <div className="text-3xl sm:text-4xl font-black tabular-nums">{onChainData.transactions}+</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wider">Recent Tx</div>
+                <div className="text-2xl sm:text-4xl font-black tabular-nums">
+                  {isLoading && onChainData.latestTx === '—' ? '…' : onChainData.latestTx}
+                </div>
+                <div className="text-[10px] sm:text-xs text-white/40 mt-1 uppercase tracking-wider">
+                  Latest
+                </div>
               </div>
             </div>
+
+            {/* Recent transactions with individual links */}
+            {onChainData.recent.length > 0 ? (
+              <div className="space-y-2.5 mb-6">
+                {onChainData.recent.map((tx, i) => (
+                  <a
+                    key={tx.hash + i}
+                    href={tx.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between text-sm px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-[#c8102e]/40 hover:bg-[#c8102e]/5 transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/40 font-mono text-xs">{tx.hash}</span>
+                      <span className="text-white/70">{tx.time}</span>
+                    </div>
+                    <ExternalLink size={14} className="text-white/30 group-hover:text-[#c8102e] transition" />
+                  </a>
+                ))}
+              </div>
+            ) : hasError ? (
+              <div className="mb-6 text-center text-sm text-white/40 py-4">
+                Unable to load recent activity. Retrying automatically…
+              </div>
+            ) : null}
+
+            {/* View all button */}
+            <a
+              href={TONVIEWER_ACCOUNT}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-bold transition"
+            >
+              View all activity on Tonviewer
+              <ExternalLink size={15} />
+            </a>
           </div>
         </div>
       </section>
